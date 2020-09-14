@@ -62,7 +62,7 @@ $(function () {
                 if (res.status !== 0) {
                     return layer.msg('获取分类数据失败！')
                 }
-                console.log(res);
+                // console.log(res);
                 // 使用模板引擎渲染页面数据
                 var htmlStr = template('tpl-cate', res)
                 // console.log(htmlStr);
@@ -74,7 +74,7 @@ $(function () {
     }
 
     // 为筛选表单绑定 submit 事件
-    $('#form-search').on('submit', '#form-add', function (e) {
+    $('#form-search').on('submit', function (e) {
         e.preventDefault()  // 阻止表单默认提交行为
         // 获取表单中选项中的值
         var cate_id = $('[name=cate_id]').val()
@@ -88,23 +88,56 @@ $(function () {
 
     // 定义渲染分页的方法
     function renderPage(total) {
-        console.log(total);
+        // console.log(total);
         // 调用 layPage.rander() 方法来渲染分页的结构
         laypage.render({
             elem: 'pageBox', //注意，这里的 test1 是 ID，不用加 # 号
             count: total, //数据总数，从服务端得到
-            limit: q.pagesize, // 每页显示几条数据
+            limit: q.pagesize, // 设置默认每页显示几条数据
             curr: q.pagenum,  // 设置默认被选中显示的页码
             // 分页发生切换时，触发 jump 回调函数
+            layout:['count','limit','prev','page','next','skip'],  // 功能项的顺序又数组中的数据顺序决定（layui 分页）
+            limits:[2,3,5,10],   //  自定义可选择每页显示多少条数据
             jump: function (obj, first) {
                 // 把最新的页码值，赋值到q这个查询参数对象中
                 q.pagenum = obj.curr
+                // 把最新的q 赋值到 pagesize 属性中
+                q.pagesize=obj.limit
                 if (!first) {
                     initTable()
                 }
             }
         })
     }
+
+    // 通过代理的方式为删除按钮绑定点击事件
+
+    $('tbody').on('click','.btn-delete',function(){
+        // 获取删除按钮的个数，代表当前页面数据的条数
+        var len=$('.btn-delete').length
+        // 询问用户是否要删除数据
+        var id=$(this).attr('data-id')
+        layer.confirm('确认删除?', {icon: 3, title:'提示'}, function(index){
+            $.ajax({
+                type:'GET',
+                url:'/my/article/delete/'+id,
+                success:function(res){
+                    if(res.status!==0){
+                        return layer.msg('删除文章失败！')
+                    }
+                    layer.msg('删除文章成功！')
+                    // 判断删除当前页数据后，当前页面是否还有剩余数据，如果没有，则页码值减一，跳转到前一页面
+                   if(len===1){
+                    // 如果值等于1，则删除完毕，该页面再无数据
+                    // 页码值最小为1，所以也需要判断pagenum的大小
+                    q.pagenum=q.pagenum===1?1:q.pagenum-1
+                   }
+                    initTable()
+                }
+            })
+            layer.close(index);    //删除弹出层（layui默认方法）
+          });
+    })
 
 
 })
